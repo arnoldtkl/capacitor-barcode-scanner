@@ -37,7 +37,11 @@ public class CapacitorBarcodeScannerPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        Task {
+        // @MainActor ensures call.resolve() / call.sendError() are always called on the
+        // main thread. Without it, the task resumes on Swift's cooperative thread pool
+        // after the continuation, and Capacitor's bridge (WKWebView) is not thread-safe —
+        // accessing it off-main crashes with EXC_BAD_ACCESS (code=1, address=0x20).
+        Task { @MainActor in
             do {
                 let scannedBarcode = try await manager.scanBarcode(with: scanArguments)
                 call.resolve(["ScanResult": scannedBarcode.text, "format": scannedBarcode.format.rawValue])
